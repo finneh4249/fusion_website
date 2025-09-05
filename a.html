@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimal Amazon Prime Transition Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #232f3e;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .analysis {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .optimal {
+            background: #d4edda;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 5px solid #28a745;
+        }
+        .calculator {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .slider-container {
+            margin: 15px 0;
+        }
+        .slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            font-size: 13px;
+        }
+        th {
+            background-color: #232f3e;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-weight: bold;
+        }
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .positive { color: #007600; font-weight: bold; }
+        .negative { color: #cc0000; font-weight: bold; }
+        .cash-in { background-color: #e8f5e8; }
+        .cash-out-monthly { background-color: #ffe8e8; }
+        .cash-out-annual { background-color: #fff0e6; }
+        .transition { background-color: #e6f3ff !important; border-left: 4px solid #007bff; }
+        .phase-header { background-color: #6c757d !important; color: white !important; font-weight: bold; text-align: center; }
+        .export-btn {
+            background-color: #ff9900;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .export-btn:hover { background-color: #e68a00; }
+        .metric { display: inline-block; margin: 10px 20px 10px 0; padding: 10px; background: #f8f9fa; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Optimal Amazon Prime Transition Calculator</h1>
+        
+        <div class="analysis">
+            <h3>📊 Mathematical Analysis</h3>
+            <p><strong>Current Situation:</strong></p>
+            <ul>
+                <li>Monthly cost: $9.99 × 12 = $119.88/year</li>
+                <li>Annual cost: $79.00/year</li>
+                <li>Opportunity cost: $41.88 lost per year of delay</li>
+                <li>With 2% annual increases, delays become more expensive</li>
+            </ul>
+            <p><strong>Optimization Goal:</strong> Minimize total cost while maintaining cash flow</p>
+        </div>
+
+        <div class="optimal">
+            <h3>🎯 Optimal Solution</h3>
+            <div id="optimalSolution">
+                <p><strong>Recommended Fortnightly Amount: $<span id="recommendedAmount">11.50</span></strong></p>
+                <p><strong>Transition Timeline: <span id="transitionTime">6 months</span></strong></p>
+                <p><strong>Total Savings Over 2 Years: $<span id="totalSavings">83.76</span></strong></p>
+            </div>
+        </div>
+
+        <div class="calculator">
+            <h3>🔧 Interactive Optimizer</h3>
+            <div class="slider-container">
+                <label for="fortnightlyAmount">Fortnightly Amount: $<span id="amountValue">11.50</span></label>
+                <input type="range" id="fortnightlyAmount" class="slider" min="6" max="20" step="0.25" value="11.50" oninput="updateCalculation()">
+            </div>
+            
+            <div id="results">
+                <div class="metric">Transition Time: <span id="transitionMonths">6 months</span></div>
+                <div class="metric">Total Cost Savings: $<span id="savingsAmount">83.76</span></div>
+                <div class="metric">ROI: <span id="roiPercent">35%</span></div>
+                <div class="metric">Max Negative Balance: $<span id="maxNegative">-15.35</span></div>
+            </div>
+        </div>
+
+        <button class="export-btn" onclick="exportToCSV()">Export to CSV for Excel</button>
+
+        <table id="subscriptionTable">
+            <thead>
+                <tr>
+                    <th style="width: 12%;">Date</th>
+                    <th style="width: 18%;">Transaction Type</th>
+                    <th style="width: 10%;">Cash In</th>
+                    <th style="width: 10%;">Cash Out</th>
+                    <th style="width: 10%;">Balance</th>
+                    <th style="width: 40%;">Comments</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        let currentFortnightlyAmount = 11.50;
+
+        function calculateOptimalAmount() {
+            // Mathematical optimization
+            // Goal: Minimize total cost over 24 months while maintaining reasonable cash flow
+            
+            const monthlyPayment = 9.99;
+            const annualPayment = 79.00;
+            const annualSavings = 41.88;
+            const priceIncrease = 0.02;
+            
+            // Test different fortnightly amounts
+            let bestAmount = 6.00;
+            let bestTotalCost = Infinity;
+            let bestTransitionTime = 0;
+            
+            for (let amount = 6.00; amount <= 20.00; amount += 0.25) {
+                const result = simulateScenario(amount);
+                if (result.totalCost < bestTotalCost && result.maxNegativeBalance > -50) {
+                    bestAmount = amount;
+                    bestTotalCost = result.totalCost;
+                    bestTransitionTime = result.transitionMonths;
+                }
+            }
+            
+            return {
+                amount: bestAmount,
+                transitionTime: bestTransitionTime,
+                savings: (119.88 * 2) - bestTotalCost
+            };
+        }
+
+        function simulateScenario(fortnightlyAmount) {
+            let balance = 0;
+            let totalCost = 0;
+            let transitionMonths = 0;
+            let maxNegativeBalance = 0;
+            let transitioned = false;
+            
+            // Simulate 24 months
+            for (let month = 1; month <= 24; month++) {
+                // Add fortnightly contributions (2 per month approximately)
+                balance += fortnightlyAmount * 2.17; // 26/12 = 2.17 fortnights per month
+                
+                if (!transitioned) {
+                    // Pay monthly subscription
+                    balance -= 9.99;
+                    totalCost += 9.99;
+                    
+                    // Check if we can transition to annual
+                    if (balance >= 79.00) {
+                        balance -= 79.00;
+                        totalCost += 79.00;
+                        transitioned = true;
+                        transitionMonths = month;
+                    }
+                } else {
+                    // Already on annual, just accumulate for next year
+                    if (month === 12 + transitionMonths) {
+                        // Pay next annual (with increase)
+                        const nextAnnual = 79.00 * (1 + 0.02);
+                        balance -= nextAnnual;
+                        totalCost += nextAnnual;
+                    }
+                }
+                
+                maxNegativeBalance = Math.min(maxNegativeBalance, balance);
+            }
+            
+            return {
+                totalCost,
+                transitionMonths,
+                maxNegativeBalance
+            };
+        }
+
+        function updateCalculation() {
+            const amount = parseFloat(document.getElementById('fortnightlyAmount').value);
+            currentFortnightlyAmount = amount;
+            
+            document.getElementById('amountValue').textContent = amount.toFixed(2);
+            
+            const result = simulateScenario(amount);
+            const baselineCost = 119.88 * 2; // 2 years of monthly payments
+            const savings = baselineCost - result.totalCost;
+            const roi = (savings / (amount * 26 * 2)) * 100; // ROI over 2 years
+            
+            document.getElementById('transitionMonths').textContent = result.transitionMonths + ' months';
+            document.getElementById('savingsAmount').textContent = savings.toFixed(2);
+            document.getElementById('roiPercent').textContent = roi.toFixed(1) + '%';
+            document.getElementById('maxNegative').textContent = result.maxNegativeBalance.toFixed(2);
+            
+            generateSchedule(amount);
+        }
+
+        function generateSchedule(fortnightlyAmount = currentFortnightlyAmount) {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            
+            const transactions = [];
+            let balance = 0.00;
+            let currentDate = new Date('2025-09-16');
+            let transitioned = false;
+            let transitionDate = null;
+            
+            // Phase 1 header
+            transactions.push({
+                date: new Date('2025-09-15'),
+                type: 'PHASE 1: ACCELERATED SAVINGS',
+                cashIn: 0, cashOut: 0, balance: 0,
+                comment: `Saving $${fortnightlyAmount.toFixed(2)} fortnightly to transition quickly`,
+                isHeader: true
+            });
+            
+            // Generate 18 months of data
+            while (currentDate < new Date('2027-03-16')) {
+                // Fortnightly savings
+                if (isPayday(currentDate)) {
+                    balance += fortnightlyAmount;
+                    transactions.push({
+                        date: new Date(currentDate),
+                        type: 'Fortnightly Savings',
+                        cashIn: fortnightlyAmount,
+                        cashOut: 0,
+                        balance: balance,
+                        comment: `Accelerated savings for annual transition`
+                    });
+                }
+                
+                // Monthly subscription payments
+                if (currentDate.getDate() === 18 && !transitioned) {
+                    balance -= 9.99;
+                    transactions.push({
+                        date: new Date(currentDate),
+                        type: 'Monthly Payment',
+                        cashIn: 0,
+                        cashOut: 9.99,
+                        balance: balance,
+                        comment: 'Amazon Prime monthly subscription'
+                    });
+                }
+                
+                // Check transition to annual
+                if (!transitioned && balance >= 79.00) {
+                    const nextDay = new Date(currentDate);
+                    nextDay.setDate(currentDate.getDate() + 1);
+                    
+                    transactions.push({
+                        date: new Date(nextDay),
+                        type: 'TRANSITION TO ANNUAL',
+                        cashIn: 0, cashOut: 0, balance: balance,
+                        comment: 'Ready to switch! Cancel monthly and pay annual',
+                        isTransition: true
+                    });
+                    
+                    nextDay.setDate(nextDay.getDate() + 1);
+                    balance -= 79.00;
+                    transactions.push({
+                        date: new Date(nextDay),
+                        type: 'Annual Payment',
+                        cashIn: 0,
+                        cashOut: 79.00,
+                        balance: balance,
+                        comment: 'Annual subscription - immediate $41.88 annual savings!'
+                    });
+                    
+                    transitioned = true;
+                    transitionDate = new Date(nextDay);
+                    
+                    // Phase 2 header
+                    const phase2Date = new Date(nextDay);
+                    phase2Date.setDate(phase2Date.getDate() + 1);
+                    transactions.push({
+                        date: new Date(phase2Date),
+                        type: 'PHASE 2: RENEWAL SAVINGS',
+                        cashIn: 0, cashOut: 0, balance: balance,
+                        comment: 'Now save for next annual renewal',
+                        isHeader: true
+                    });
+                    
+                    currentDate = phase2Date;
+                }
+                
+                // Annual renewal
+                if (transitioned && transitionDate) {
+                    const renewalDate = new Date(transitionDate);
+                    renewalDate.setFullYear(renewalDate.getFullYear() + 1);
+                    
+                    if (Math.abs(currentDate - renewalDate) < 86400000) { // Within 1 day
+                        const renewalAmount = 79.00 * 1.02; // 2% increase
+                        balance -= renewalAmount;
+                        transactions.push({
+                            date: new Date(currentDate),
+                            type: 'Annual Renewal',
+                            cashIn: 0,
+                            cashOut: renewalAmount,
+                            balance: balance,
+                            comment: `Annual renewal with 2% increase ($${renewalAmount.toFixed(2)})`
+                        });
+                        
+                        transitionDate.setFullYear(transitionDate.getFullYear() + 1);
+                    }
+                }
+                
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            // Sort and populate table
+            transactions.sort((a, b) => a.date - b.date);
+            
+            transactions.forEach(transaction => {
+                const row = tableBody.insertRow();
+                
+                if (transaction.isHeader) {
+                    row.className = 'phase-header';
+                } else if (transaction.isTransition) {
+                    row.className = 'transition';
+                } else if (transaction.cashIn > 0) {
+                    row.className = 'cash-in';
+                } else if (transaction.cashOut > 0) {
+                    row.className = transaction.type.includes('Monthly') ? 'cash-out-monthly' : 'cash-out-annual';
+                }
+                
+                const dateCell = row.insertCell();
+                dateCell.textContent = transaction.isHeader ? '' : transaction.date.toLocaleDateString('en-AU');
+                
+                const typeCell = row.insertCell();
+                typeCell.textContent = transaction.type;
+                
+                const cashInCell = row.insertCell();
+                cashInCell.textContent = transaction.cashIn > 0 ? `$${transaction.cashIn.toFixed(2)}` : '';
+                cashInCell.className = transaction.cashIn > 0 ? 'positive' : '';
+                
+                const cashOutCell = row.insertCell();
+                cashOutCell.textContent = transaction.cashOut > 0 ? `$${transaction.cashOut.toFixed(2)}` : '';
+                cashOutCell.className = transaction.cashOut > 0 ? 'negative' : '';
+                
+                const balanceCell = row.insertCell();
+                if (!transaction.isHeader) {
+                    balanceCell.textContent = `$${transaction.balance.toFixed(2)}`;
+                    balanceCell.className = transaction.balance < 0 ? 'negative' : 'positive';
+                }
+                
+                const commentCell = row.insertCell();
+                commentCell.textContent = transaction.comment;
+            });
+        }
+
+        function isPayday(date) {
+            const firstPayday = new Date('2025-09-16');
+            const daysDiff = Math.floor((date - firstPayday) / (1000 * 60 * 60 * 24));
+            return daysDiff >= 0 && daysDiff % 14 === 0;
+        }
+
+        function exportToCSV() {
+            const table = document.getElementById('subscriptionTable');
+            const rows = table.querySelectorAll('tr');
+            let csvContent = '';
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('th, td');
+                const rowData = Array.from(cells).map(cell => {
+                    let text = cell.textContent.trim();
+                    if (text.includes(',') || text.includes('"')) {
+                        text = '"' + text.replace(/"/g, '""') + '"';
+                    }
+                    return text;
+                });
+                csvContent += rowData.join(',') + '\n';
+            });
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'optimal_amazon_prime_schedule.csv';
+            link.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Initialize with optimal calculation
+        const optimal = calculateOptimalAmount();
+        document.getElementById('recommendedAmount').textContent = optimal.amount.toFixed(2);
+        document.getElementById('transitionTime').textContent = optimal.transitionTime + ' months';
+        document.getElementById('totalSavings').textContent = optimal.savings.toFixed(2);
+        document.getElementById('fortnightlyAmount').value = optimal.amount;
+
+        updateCalculation();
+    </script>
+</body>
+</html>
